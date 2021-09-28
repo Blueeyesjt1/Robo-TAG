@@ -25,7 +25,9 @@ public class MLBrain : Agent
 
     int hitCounter = 0;
 
-    //Resetting the training environment
+    /// <summary>
+    /// Resets the training environment for bots
+    /// </summary>
     public override void OnEpisodeBegin() {
         base.OnEpisodeBegin();
 
@@ -36,6 +38,9 @@ public class MLBrain : Agent
         gameObject.transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);
     }
 
+    /// <summary>
+    /// Updating method for bot training decisions
+    /// </summary>
     private void Update() {
 
         ourName = gameObject.name;
@@ -129,6 +134,9 @@ public class MLBrain : Agent
 
     }
 
+    /// <summary>
+    /// Observations made by bots to learn and adapt from environmental factors
+    /// </summary>
     public override void CollectObservations(VectorSensor sensor) {
 
         base.CollectObservations(sensor);
@@ -157,6 +165,9 @@ public class MLBrain : Agent
             sensor.AddObservation(gameObject.GetComponent<Player>().MLDistHits[i].point);
     }
 
+    /// <summary>
+    /// Actions the ML bot decides
+    /// </summary>
     public override void OnActionReceived(float[] vectorAction) {
         //base.OnActionReceived(vectorAction); 
 
@@ -166,10 +177,10 @@ public class MLBrain : Agent
         waitOverride = (int)vectorAction[3];     //Is the agent allowed to move?
     }
 
-    //User input recording for machine learning observations
+    /// <summary>
+    /// Override method for controlling a bot
+    /// </summary>
     public override void Heuristic(float[] actionsOut) {
-
-       // userOverrideTraining = true;
 
         actionsOut[0] = gameObject.GetComponent<Player>().movVert;
         actionsOut[1] = gameObject.GetComponent<Player>().movHorz;
@@ -182,7 +193,5 @@ public class MLBrain : Agent
             actionsOut[2] = 0;
 
         actionsOut[3] = 1;
-
-        //base.Heuristic(actionsOut);
     }
 }

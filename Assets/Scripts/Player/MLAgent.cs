@@ -7,8 +7,10 @@ using UnityEngine;
 public class MLAgent : MonoBehaviourPunCallbacks {
 
     public List<GameObject> agents = new List<GameObject>();
-    
-    //Host spawns agents for first time
+
+    /// <summary>
+    /// Host spawns each agent at the start of the game
+    /// </summary>
     [PunRPC]
     public void hostSpawnAgents() {
         GameObject agent = PhotonNetwork.Instantiate("Player", new Vector3(UnityEngine.Random.Range(20f, 25f), 1, UnityEngine.Random.Range(10f, 35f)), Quaternion.identity);     //Grabs player prefab and spawns them in spawn area
@@ -32,7 +34,10 @@ public class MLAgent : MonoBehaviourPunCallbacks {
     }
 
 
-    //host sends agent data to clients when they join
+    /// <summary>
+    /// When a client joins, they ask the host for all player data
+    /// <param name="actorNum">Actor number joining player</param>
+    /// </summary>
     [PunRPC]
     public void othersRequestAgents(int actorNum) {
 
@@ -47,18 +52,20 @@ public class MLAgent : MonoBehaviourPunCallbacks {
         gameObject.GetComponent<PhotonView>().RPC("othersRequestSpawnAgent", PhotonNetwork.CurrentRoom.Players[actorNum], agentNames, agentsViewIDs);     //Calls to send info about a player to all clients.
     }
 
-    //Client receives data that host is sending
+    /// <summary>
+    /// When a client joins, they ask the host for all bot data
+    /// <param name="mlName">List of bot names</param>
+    /// <param name="mlViewIDs">List of bot view ID's</param>
+    /// </summary>
     [PunRPC]
-    public void othersRequestSpawnAgent(string[] mlName, int[] mlViewIDs) {
+    public void othersRequestSpawnAgent(string[] mlNames, int[] mlViewIDs) {
 
-        for (int i = 0; i < mlName.Length; i++) {
-            //GameObject agent = PhotonNetwork.Instantiate("Player", new Vector3(UnityEngine.Random.Range(20, 25), 1, UnityEngine.Random.Range(20, 25)), Quaternion.identity);
+        for (int i = 0; i < mlNames.Length; i++) {
             GameObject agent = PhotonView.Find(mlViewIDs[i]).gameObject;
             Destroy(agent.transform.Find("camera").gameObject);
-            //agent.gameObject.GetComponent<PhotonView>().ViewID = mlViewIDs[i];
-            agent.gameObject.GetComponent<Player>().playerName = mlName[i];
-            agent.gameObject.name = "Player:" + mlName[i];
-            agent.transform.Find("textUsername").GetComponent<TextMeshPro>().text = mlName[i];
+            agent.gameObject.GetComponent<Player>().playerName = mlNames[i];
+            agent.gameObject.name = "Player:" + mlNames[i];
+            agent.transform.Find("textUsername").GetComponent<TextMeshPro>().text = mlNames[i];
             gameObject.GetComponent<Server>().players.Add(agent);
         }
 

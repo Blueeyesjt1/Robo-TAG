@@ -32,24 +32,57 @@ public class Player : MonoBehaviourPunCallbacks {
     public RaycastHit[] MLDistHits = new RaycastHit[20];     //Used for ML agents to detect environment
     public RaycastHit[] eyeHits = new RaycastHit[5];     //Used for ML agents to find hiders and taggers
 
-    private void Update() {
-        gameObject.GetComponent<PhotonView>().RPC("Turning", RpcTarget.All);
+    MLBrain mlBrain = null;     //Brain of player, if a bot
+
+    /// <summary>
+    /// Player's interaction with the environment and server, non-synced framerate
+    /// </summary>
+    void Update() {
+        if (!photonView.IsMine)     //If we're not the local client, ignore
+            return;     //We only want the local client
+
+        Turning();
     }
 
+    /// <summary>
+    /// Player's start method at the beginning of every joined-server
+    /// </summary>
+    private void Start() {
+        if (photonView.IsMine && gameObject.GetComponent<MLBrain>() != null)
+            mlBrain = gameObject.GetComponent<MLBrain>();
+    }
+
+    /// <summary>
+    /// Player's interaction with the environment and server, synced framerate
+    /// </summary>
     void FixedUpdate()
     {
-        if (!photonView.IsMine)
-            return;
+        if (!photonView.IsMine)     //If we're not the local client, ignore
+            return;     //We only want the local client
 
-        if (isHuman || (gameObject.GetComponent<MLBrain>() != null && gameObject.GetComponent<MLBrain>().userOverrideTraining)) {     //If a real user, use mouse/keyboard inputs
+        if(isHuman)
+            RayCasts();     //Raycast detection for bots
+
+        if (!isFrozen)
+            PlayerInputs();     //Player movement, whether it be a bot or real user
+
+        if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
+            GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
+    }
+
+    /// <summary>
+    /// Player's input, whether it be a bot or a real user
+    /// </summary>
+    void PlayerInputs() {
+
+        if (isHuman || (mlBrain != null && mlBrain.userOverrideTraining == true)) {     //If a real user or heuristic agent, use mouse/keyboard inputs
 
             if (Input.GetKey(KeyCode.W))     //Front back movement
                 movVert = 1;
-            else if(Input.GetKey(KeyCode.S))
+            else if (Input.GetKey(KeyCode.S))
                 movVert = -1;
             else
-                movVert = 0; 
-            
+                movVert = 0;
 
             if (Input.GetKey(KeyCode.A))     //Left right movement
                 movHorz = -1;
@@ -58,33 +91,32 @@ public class Player : MonoBehaviourPunCallbacks {
             else
                 movHorz = 0;
 
-
-            if (Input.GetAxisRaw("Mouse X") != 0)     //Left right xTurning
+            if (Input.GetAxisRaw("Mouse X") != 0)     //Left right turning
                 xTurn = Input.GetAxisRaw("Mouse X");
             else
                 xTurn = 0;
 
-
-            if (Input.GetAxisRaw("Mouse Y") != 0)     //Up down xTurning
+            if (Input.GetAxisRaw("Mouse Y") != 0)     //Up down turning
                 yTurn = Input.GetAxisRaw("Mouse Y");
             else
                 yTurn = 0;
-        }
-        else {     //If a ML agent, use ML choices
 
-            if (gameObject.GetComponent<MLBrain>().waitOverride == 1) {
-                if (gameObject.GetComponent<MLBrain>().forwBack == 2)     //Front back movement
+        }
+        else if(!isHuman) {     //If a ML agent, use ML choices
+
+            if (mlBrain.waitOverride == 1) {
+                if (mlBrain.forwBack == 2)     //Front back movement
                     movVert = 1;
-                else if (gameObject.GetComponent<MLBrain>().forwBack == 1)
+                else if (mlBrain.forwBack == 1)
                     movVert = -1;
-                else if (gameObject.GetComponent<MLBrain>().forwBack == 0)
+                else if (mlBrain.forwBack == 0)
                     movVert = 0;
 
-                if (gameObject.GetComponent<MLBrain>().leftRight == 1)     //Left right movement
+                if (mlBrain.leftRight == 1)     //Left right movement
                     movHorz = -1;
-                else if (gameObject.GetComponent<MLBrain>().leftRight == 2)
+                else if (mlBrain.leftRight == 2)
                     movHorz = 1;
-                else if (gameObject.GetComponent<MLBrain>().leftRight == 0)
+                else if (mlBrain.leftRight == 0)
                     movHorz = 0;
             }
             else {
@@ -92,26 +124,23 @@ public class Player : MonoBehaviourPunCallbacks {
                 movHorz = 0;
             }
 
-            if (gameObject.GetComponent<MLBrain>().rotY == 2)     //Left right xTurning
+            if (mlBrain.rotY == 2)     //Left right xTurning
                 xTurn = .4f;
-            else if (gameObject.GetComponent<MLBrain>().rotY == 1)     //Left right xTurning
+            else if (mlBrain.rotY == 1)     //Left right xTurning
                 xTurn = -.4f;
-            else if (gameObject.GetComponent<MLBrain>().rotY == 0)
+            else if (mlBrain.rotY == 0)
                 xTurn = 0;
         }
 
-        RayCasts();
-
-        if(isFrozen == false)
-            gameObject.GetComponent<PhotonView>().RPC("Movement", RpcTarget.All);
-
-        if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
-            GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
+        Movement();     //Inform other users about movement
     }
 
+    /// <summary>
+    /// If player is the tagger, detect when they tag someone
+    /// </summary>
     private void OnTriggerEnter(Collider col) {
 
-        if (!photonView.IsMine || !col.name.Contains("Player"))
+        if (!col.name.Contains("Player"))
             return;
 
         if (!isFrozen && isTagger && !col.gameObject.GetComponent<Player>().isTagger && !col.gameObject.GetComponent<Player>().isFrozen) {     //If unfrozen-client is a tagger and tags unfrozen-someone who isn't,
@@ -124,6 +153,9 @@ public class Player : MonoBehaviourPunCallbacks {
         }
     }
 
+    /// <summary>
+    /// Bot's raycasting used for player and environment depth-detection
+    /// </summary>
     void RayCasts() {
         RaycastHit forwHit;
         if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), transform.forward, out forwHit, 1.1f, 1 << 0)) {
@@ -156,7 +188,6 @@ public class Player : MonoBehaviourPunCallbacks {
         }
         else
             hitWallRight = 1;
-
 
         int rayCount = 0;
         for(int i = 0; i < 4; i++) {
@@ -211,11 +242,10 @@ public class Player : MonoBehaviourPunCallbacks {
         }
     }
 
-    [PunRPC]
+    /// <summary>
+    /// Player's movement, whether it be player or bot
+    /// </summary>
     void Movement() {
-
-        if (!photonView.IsMine)
-            return;
 
         if (movHorz == -1)
             gameObject.transform.Translate(speedMult * 5f * movHorz * hitWallLeft * Time.fixedDeltaTime, 0, 0, Space.Self);     //Move left
@@ -228,17 +258,25 @@ public class Player : MonoBehaviourPunCallbacks {
             gameObject.transform.Translate(0, 0, speedMult * 5f * movVert * hitWallBack * Time.fixedDeltaTime, Space.Self);     //Move backward
     }
 
-    [PunRPC]
+    /// <summary>
+    /// Player's rotation, whether it be player or bot
+    /// </summary>
     void Turning() {
 
+        int turnMult = 1;
+
+        if (Application.isEditor)
+            turnMult = 5;
+
+            //If input turning left or right, rotate player
         if (xTurn != 0)
-            gameObject.transform.Rotate(new Vector3(0, xTurn * 500 * Time.deltaTime, 0), Space.Self);     //Horizontal rotation
+            gameObject.transform.Rotate(new Vector3(0, xTurn * 100 * turnMult * Time.deltaTime, 0), Space.Self);     //Horizontal rotation
+        else
+            gameObject.transform.Rotate(new Vector3(0, 0, 0), Space.Self);     //Horizontal rotation
 
-        if (isHuman && photonView.IsMine) {
-            var camRot = gameObject.transform.Find("camera").transform.localEulerAngles;
-            gameObject.transform.Find("camera").transform.Rotate(-yTurn * 500 * Time.deltaTime, 0, 0, Space.Self);     //No rotation limits yet
-        }
-
+        //If real person and wanting to look up or down, proceed
+        if (isHuman)
+            gameObject.transform.Find("camera").transform.Rotate(-yTurn * 100 * turnMult * Time.deltaTime, 0, 0, Space.Self);     //No rotation limits yet
     }
 
 }

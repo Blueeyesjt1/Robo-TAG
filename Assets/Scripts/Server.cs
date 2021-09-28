@@ -11,8 +11,11 @@ using Unity.MLAgents.Demonstrations;
 public class Server : MonoBehaviourPunCallbacks {
 
     public List<GameObject> players = new List<GameObject>();
-    int aiCount = 10;
+    int aiCount = 0;
 
+    /// <summary>
+    /// Every client calls method when a new player joins
+    /// </summary>
     public override void OnJoinedRoom() {
 
         base.OnJoinedRoom();      //Default to PUN
@@ -24,80 +27,109 @@ public class Server : MonoBehaviourPunCallbacks {
         Destroy(player.GetComponent<MLBrain>());     //Since not a bot, remove this component
         Destroy(player.GetComponent<BehaviorParameters>());     //Since not a bot, remove this component
 
-        if (!player.GetComponent<PhotonView>().IsMine)     //If not our client,
+        if (!player.GetComponent<PhotonView>().IsMine || !PhotonNetwork.LocalPlayer.IsLocal)     //If not our client, ignore everything proceeding this
             return;
 
         UnityEngine.Cursor.visible = false;     //Hide mouse
-        UnityEngine.Cursor.lockState = CursorLockMode.Locked;     //Lock mouse
+        UnityEngine.Cursor.lockState = CursorLockMode.Locked;     //Lock mouse to game window
 
         player.transform.Find("camera").gameObject.SetActive(true);     //Enable camera for only client
 
         string playerName = "Noob" + Random.Range(0, 999);     //Assign username to player
 
-        int playerActorNum = PhotonNetwork.LocalPlayer.ActorNumber;
+        int playerActorNum = PhotonNetwork.LocalPlayer.ActorNumber;     //Grab local player actor number
 
-
-        if (PhotonNetwork.LocalPlayer.NickName != "" && PhotonNetwork.LocalPlayer.NickName != null)
+        if (PhotonNetwork.LocalPlayer.NickName != "" && PhotonNetwork.LocalPlayer.NickName != null)     //If player inputted own nickname on main menu, use it
             playerName = PhotonNetwork.LocalPlayer.NickName;
 
-        gameObject.GetComponent<PhotonView>().RPC("playerLoadUpSend", RpcTarget.AllBuffered, player.gameObject.GetPhotonView().ViewID, playerName, playerActorNum);     //Calls to send info about a player to all clients.
+        print("Our own client, " + playerName + ", has joined the server");
+        
+        bool playeralreadyExists = false;
 
-        players.Add(player);
-
-        if (PhotonNetwork.IsMasterClient) {     //If host,
-            for (int i = 0; i < aiCount; i++)
-                gameObject.GetComponent<PhotonView>().RPC("hostSpawnAgents", RpcTarget.MasterClient);     //Calls to send info about a player to all clients.
-
-            if (PhotonNetwork.LocalPlayer.IsLocal) {
-                print("Host is assigning tagger...");
-                gameObject.GetComponent<PhotonView>().RPC("newTagger", RpcTarget.All, players[Random.Range(0, players.Count)].GetComponent<PhotonView>().ViewID);
+        if (players.Count > 0) {
+            for (int i = 0; i < players.Count; i++) {     //Confirm whether the player has already been added (Bug preventer)
+                if (players[i].name == player.name) {
+                    playeralreadyExists = true;
+                    print("ERROR: " + player.name + " is already on the player list");
+                }
             }
         }
         else
-            gameObject.GetComponent<PhotonView>().RPC("othersRequestAgents", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber);     //Calls to send info about a player to all clients.
+            playeralreadyExists = false;
 
-        if (PhotonNetwork.IsMasterClient) {
-            }
+        if (playeralreadyExists == false)
+            players.Add(player);     //Add this player to this client's global player list
+
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.LocalPlayer.IsLocal) {     //If host is local player,
+
+            print("Our own client, " + playerName + ", is the host so:");
+
+            for (int i = 0; i < aiCount; i++)
+                gameObject.GetComponent<PhotonView>().RPC("hostSpawnAgents", RpcTarget.MasterClient);     //Calls to send info about a player to all clients.
+            print("     Spawn agents");
+
+            gameObject.GetComponent<PhotonView>().RPC("newTagger", RpcTarget.All, gameObject.GetComponent<PhotonView>().ViewID);
+            print("     Make host 1st tagger");
+        }
+
+        gameObject.GetComponent<PhotonView>().RPC("playerLoadUpSend", RpcTarget.AllBuffered, gameObject.GetPhotonView().ViewID, playerName, playerActorNum);     //Calls to send info about a player to all clients.
+
     }
 
     /// <summary>
-    /// Joined client send their information to all other clients in server
-    /// <param name="viewID">Photon view ID of player for identification over network</param>
-    /// <param name="pName">Name of joining player</param>
-    /// <param name="actorNum">Actor number joining player</param>
+    /// Joined client sends their information to all other clients in server
+    /// <param name="viewID">Photon view ID of newly joined player for identification over network</param>
+    /// <param name="pName">Name of joined-player</param>
+    /// <param name="actorNum">Actor number joined-player</param>
     /// </summary>
     [PunRPC]
     public void playerLoadUpSend(int viewID, string pName, int actorNum) {
 
-        GameObject joinedClient = PhotonView.Find(viewID).gameObject;
+        GameObject joinedClient = PhotonView.Find(viewID).gameObject;     //Have this client find the newly-joined player in the scene
 
-        joinedClient.GetComponent<Player>().playerName = pName;
-        joinedClient.GetComponent<Player>().playerActorNum = actorNum;
-        joinedClient.name = "Player:" + pName;
+        bool playeralreadyExists = false;
+
+        if (players.Count > 0) {
+            for (int i = 0; i < players.Count; i++) {     //Confirm whether the player has already been added (Bug preventer)
+                if (players[i].name == joinedClient.name)
+                    playeralreadyExists = true;
+            }
+        }
+        else
+            playeralreadyExists = false;
+
+        if (playeralreadyExists == false)
+            players.Add(joinedClient);     //Add this player to this client's global player list
+
+        joinedClient.GetComponent<Player>().playerName = pName;     //Assign name
+        joinedClient.GetComponent<Player>().playerActorNum = actorNum;      //Ensure this object is being controlled by correct client on our side
+        joinedClient.name = "Player:" + pName;     //Assign game object name to be the client's username
         joinedClient.transform.Find("textUsername").GetComponent<TextMeshPro>().text = pName;
         Destroy(joinedClient.GetComponent<DemonstrationRecorder>());     //Since not a bot, remove this component
         Destroy(joinedClient.GetComponent<DecisionRequester>());     //Since not a bot, remove this component
         Destroy(joinedClient.GetComponent<MLBrain>());     //Since not a bot, remove this component
         Destroy(joinedClient.GetComponent<BehaviorParameters>());     //Since not a bot, remove this component
 
-        if (PhotonNetwork.IsMasterClient)     //If host, inform our new client on who the taggers are in the game
-            StartCoroutine(WaitOnTagger(actorNum));
+        //Everything past this is the host informing our newly joined client
+        if (!PhotonNetwork.IsMasterClient)     //If host, inform our new client about the server's information
+            return;
 
+        gameObject.GetComponent<PhotonView>().RPC("othersRequestAgents", RpcTarget.MasterClient, actorNum);     //Calls to send info about a player to all clients.
+        StartCoroutine(WaitOnTagger(actorNum));
     }
 
     /// <summary>
-    /// After host has received a new player's info, the host informs the new player on who the taggers are
-    /// <param name="viewID">Photon view ID of player for identification over network</param>
-    /// <param name="pName">Name of joining player</param>
+    /// After host has received a new player's info, the host informs the new player about the server's data
     /// <param name="actorNum">Actor number joining player</param>
     /// </summary>
     IEnumerator WaitOnTagger(int actorNum) {
 
-        while(gameObject.GetComponent<Tag>().tagPlayers == null)     //Ensure that the host knows who the latest tagger is- (A bit of a bug fix)
+        while(gameObject.GetComponent<Tag>().tagPlayers == null)     //Wait and ensure that the host knows who the latest tagger is- (Bug fix)
             yield return new WaitForEndOfFrame();
 
-        for(int i = 0; i < GetComponent<Tag>().tagPlayers.Count; i++) {
-            gameObject.GetComponent<PhotonView>().RPC("loadTagger", PhotonNetwork.CurrentRoom.Players[actorNum], gameObject.GetComponent<Tag>().tagPlayers[i].GetComponent<PhotonView>().ViewID);     //Host sends server info to newly joined client
-        }
+        for(int i = 0; i < GetComponent<Tag>().tagPlayers.Count; i++)     //For each tagger there is, let newly-joined client know
+            gameObject.GetComponent<PhotonView>().RPC("loadTagger", PhotonNetwork.CurrentRoom.Players[actorNum], gameObject.GetComponent<Tag>().tagPlayers[i].GetComponent<PhotonView>().ViewID);     //Host tells new client who tagger is
+    
     }
+
 }
