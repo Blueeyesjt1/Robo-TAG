@@ -3,23 +3,59 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.MLAgents.Policies;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Tag : MonoBehaviourPunCallbacks {
 
     public List<GameObject> tagPlayers;     //List of taggers in the game
+    public AudioClip slap;
+    public AudioClip boop;
 
     /// <summary>
     /// Restarts the round across the server
     /// </summary>
     IEnumerator restartDelay() {
-        if (PhotonNetwork.IsMasterClient && PhotonNetwork.LocalPlayer.IsLocal) {
-            if (PhotonNetwork.IsMasterClient && tagPlayers.Count + 1 >= gameObject.GetComponent<Server>().players.Count) {     //Ensure that the players have still yet to be untagged (Bug preventer)
-                gameObject.GetComponent<PhotonView>().RPC("Removetaggers", RpcTarget.All);     //Remove all the taggers in the game
-                yield return new WaitForSeconds(3);     //Wait delay to prevent last-second tagging again
-                gameObject.GetComponent<PhotonView>().RPC("newTagger", RpcTarget.All, 
-                    gameObject.GetComponent<Server>().players[Random.Range(0, gameObject.GetComponent<Server>().players.Count)].GetComponent<PhotonView>().ViewID);     //Select a new random player as tagger
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.LocalPlayer.IsLocal) {     //Ensure that the players have still yet to be untagged (Bug preventer)
+            yield return new WaitForSeconds(5);     //Wait delay to prevent last-second tagging again
+            gameObject.GetComponent<PhotonView>().RPC("Removetaggers", RpcTarget.All);     //Remove all the taggers in the game
+            gameObject.GetComponent<PhotonView>().RPC("reSpawn", RpcTarget.All);
+            yield return new WaitForSeconds(5);     //Wait delay to prevent last-second tagging again
+            gameObject.GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, gameObject.GetComponent<Server>().players[Random.Range(0, gameObject.GetComponent<Server>().players.Count)].GetComponent<PhotonView>().ViewID);     //Select a new random player as tagger
+            
+        }
+    }
+
+    /// <summary>
+    /// Client respawns themselves in a new position in map
+    /// </summary>
+    [PunRPC]
+    public void reSpawn() {
+
+        if (!PhotonNetwork.LocalPlayer.IsLocal || !photonView.IsMine)
+            return;
+
+        var players = gameObject.GetComponent<Server>().players;
+
+        for (int i = 0; i < players.Count; i++) {
+            if (photonView.IsMine) {
+                players[i].transform.position = gameObject.GetComponent<Server>().RandomSpawn();
+                players[i].transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);
+                break;
             }
         }
+
+       /* if (PhotonNetwork.IsMasterClient) {     //If host, reset all agents postitions and training episode
+            var agents = gameObject.GetComponent<MLAgent>().agents;
+
+            for (int j = 0; j < agents.Count; j++) {
+                if (agents[j].GetComponent<MLBrain>() != null) {
+                    agents[j].GetComponent<MLBrain>().EndEpisode();*//*
+                    agents[j].transform.position = new Vector3(UnityEngine.Random.Range(20f, 25f), 1, UnityEngine.Random.Range(10f, 35f));
+                    agents[j].transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);*//*
+                }
+            }
+        }*/
+
     }
 
     /// <summary>
@@ -38,39 +74,13 @@ public class Tag : MonoBehaviourPunCallbacks {
     /// <param name="viewID">Photon view ID of tagged player for identification over network</param>
     /// </summary>
     [PunRPC]
-    public void newTagger(int viewID) {        
-        if(tagPlayers.Count + 1 < gameObject.GetComponent<Server>().players.Count) {     //If there's not 1 hider left, tag them
+    public void newTagger(int viewID) {   
+        GameObject newTaggedPlayer = PhotonView.Find(viewID).gameObject;
+        Debug.DrawLine(newTaggedPlayer.transform.position, newTaggedPlayer.transform.position + new Vector3(0, 10, 0), Color.red, 1f);     //Used for visual debugging
+        StartCoroutine(FreezeTagger(newTaggedPlayer));
 
-            GameObject newtaggedPlayer = PhotonView.Find(viewID).gameObject;
-            newtaggedPlayer.GetComponent<MeshRenderer>().material.color = Color.red;     //Make new tagger red
-
-            bool taggerAlreadyExists = false;
-
-            if (tagPlayers.Count > 1) {
-                for (int i = 0; i < tagPlayers.Count; i++) {     //Confirm whether the player has already been added (Bug preventer)
-                    if (tagPlayers[i].name == newtaggedPlayer.name)
-                        taggerAlreadyExists = true;
-                }
-            }
-            else
-                taggerAlreadyExists = false;
-
-            if (taggerAlreadyExists == true) {     //Bug preventer
-                newtaggedPlayer.GetComponent<MeshRenderer>().material.color = Color.red;     //Make new tagger red
-                newtaggedPlayer.GetComponent<Player>().isTagger = true;     //Unfreeze tagger
-                newtaggedPlayer.GetComponent<SphereCollider>().enabled = true;     //Make old tagger have their tagging collider disabled
-                return;
-            }
-
-            StartCoroutine(FreezeTagger(viewID));
-
-            Debug.DrawLine(newtaggedPlayer.transform.position, newtaggedPlayer.transform.position + new Vector3(0, 10, 0), Color.red, 1f);
-        }     //If there are no more hiders, host restarts game
-        else if(tagPlayers.Count > 1 && PhotonNetwork.IsMasterClient && PhotonNetwork.LocalPlayer.IsLocal) {
-            print("Restarting game");
-            StartCoroutine(restartDelay());
-            return;
-        }
+        if(newTaggedPlayer.GetComponent<Player>().isHuman)
+            gameObject.GetComponent<PhotonView>().RPC("makeAnnouncement", PhotonNetwork.CurrentRoom.Players[newTaggedPlayer.GetComponent<Player>().playerActorNum], newTaggedPlayer.name, "You\'re a <color=red>tagger!</color>", "slap");
     }
 
     /// <summary>
@@ -78,28 +88,21 @@ public class Tag : MonoBehaviourPunCallbacks {
     /// <param name="viewID">Photon view ID of tagged player for identification over network</param>
     /// </summary>
     /// 
-    IEnumerator FreezeTagger(int viewID) {
-        GameObject newTaggedPlayer = PhotonView.Find(viewID).gameObject;
-
+    IEnumerator FreezeTagger(GameObject newTaggedPlayer) {
+        newTaggedPlayer.GetComponent<Player>().isTagger = true;     //Unfreeze tagger
+        newTaggedPlayer.GetComponent<MeshRenderer>().material.color = Color.black;     //Make new tagger red
         newTaggedPlayer.GetComponent<Player>().isFrozen = true;     //Freeze tagger
         yield return new WaitForSeconds(4);     //Delay for feezing
+        newTaggedPlayer.GetComponent<MeshRenderer>().material.color = Color.red;     //Make new tagger red
         newTaggedPlayer.GetComponent<Player>().isFrozen = false;     //Unfreeze tagger
-        newTaggedPlayer.GetComponent<Player>().isTagger = true;     //Unfreeze tagger
         newTaggedPlayer.GetComponent<SphereCollider>().enabled = true;
-        print("Turned " + newTaggedPlayer.GetComponent<Player>().playerName + " red, to tagger");
+        print("Turned " + newTaggedPlayer.GetComponent<Player>().playerName + " to tagger");
+        tagPlayers.Add(newTaggedPlayer);     //New tagger is set to global tagger list
 
-        bool taggerAlreadyExists = false;
-        if (tagPlayers.Count > 0) {
-            for (int i = 0; i < tagPlayers.Count; i++) {     //Confirm whether the player has already been added (Bug preventer)
-                if (tagPlayers[i].name == newTaggedPlayer.name)
-                    taggerAlreadyExists = true;
-            }
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.LocalPlayer.IsLocal && tagPlayers.Count >= gameObject.GetComponent<Server>().players.Count && gameObject.GetComponent<Server>().players.Count > 1) {     //If there are no more hiders and there is more than 1 player, host restarts game
+            print("Restarting game");
+            StartCoroutine(restartDelay());
         }
-        else
-            taggerAlreadyExists = false;
-
-        if(taggerAlreadyExists == false)
-            tagPlayers.Add(newTaggedPlayer);     //New tagger is set to global tagger list
     }
 
     /// <summary>
@@ -111,23 +114,14 @@ public class Tag : MonoBehaviourPunCallbacks {
 
         GameObject taggedPlayer = PhotonView.Find(viewID).gameObject;     //Found tagger within scene
 
-        bool taggerAlreadyExists = false;
-
-        if (tagPlayers.Count > 0) {
-            for (int i = 0; i < tagPlayers.Count; i++) {     //Confirm whether the player has already been added (Bug preventer)
-                if (tagPlayers[i].name == taggedPlayer.name)
-                    taggerAlreadyExists = true;
-            }
-        }
-        else
-            taggerAlreadyExists = false;
-
         taggedPlayer.GetComponent<MeshRenderer>().material.color = Color.red;     //Make new tagger red
         taggedPlayer.GetComponent<Player>().isTagger = true;     //Unfreeze tagger
         taggedPlayer.GetComponent<SphereCollider>().enabled = true;     //Make old tagger have their tagging collider disabled
 
-        if (taggerAlreadyExists == false)
-            tagPlayers.Add(taggedPlayer);     //New tagger is set to global tagger list
+        if (taggedPlayer.GetComponent<Player>().isHuman)
+            gameObject.GetComponent<PhotonView>().RPC("makeAnnouncement", PhotonNetwork.CurrentRoom.Players[taggedPlayer.GetComponent<Player>().playerActorNum], taggedPlayer.name, "You\'re a <color=red>tagger!</color>", "slap");
+
+        tagPlayers.Add(taggedPlayer);     //New tagger is set to global tagger list
     }
 
     /// <summary>
@@ -142,9 +136,35 @@ public class Tag : MonoBehaviourPunCallbacks {
         taggedPlayer.GetComponent<SphereCollider>().enabled = false;     //Make old tagger have their tagging collider disabled
         taggedPlayer.GetComponent<Player>().isTagger = false;     //They are no longer tagger
         taggedPlayer.GetComponent<Player>().isFrozen = false;     //They are no longer frozen (if they were)
-        taggedPlayer.GetComponent<MeshRenderer>().material.color = Color.white;     //Make new tagger red
+        taggedPlayer.GetComponent<MeshRenderer>().material.color = Color.white;     //Make white
+        
+        if (taggedPlayer.GetComponent<Player>().isHuman)
+            gameObject.GetComponent<PhotonView>().RPC("makeAnnouncement", PhotonNetwork.CurrentRoom.Players[taggedPlayer.GetComponent<Player>().playerActorNum], taggedPlayer.name, "You\'re a <color=white>hider!</color>", "boop");
+    }
 
-        if (taggedPlayer.GetComponent<MLBrain>() != null && taggedPlayer.GetComponent<BehaviorParameters>().Model == null)     //If an ML agent is training, reset their environment
-            taggedPlayer.GetComponent<MLBrain>().EndEpisode();
+    [PunRPC]
+    public void makeAnnouncement(string player, string message, string sound) {
+
+        GameObject playerG = GameObject.Find(player);
+
+        if(sound == "slap")
+            playerG.GetComponent<AudioSource>().clip = slap;
+        else
+            playerG.GetComponent<AudioSource>().clip = boop;
+
+        playerG.GetComponent<AudioSource>().Play();
+
+        playerG.transform.Find("camera/Canvas/Announcement").GetComponent<Text>().text = message;
+        playerG.transform.Find("camera/Canvas/Announcement").GetComponent<Text>().enabled = true;
+
+        print("Displaying announcement for " + playerG.name);
+
+        StartCoroutine(turnOffAnnounce(playerG));
+    }
+
+    IEnumerator turnOffAnnounce(GameObject player) {
+        yield return new WaitForSeconds(2);
+        player.transform.Find("camera/Canvas/Announcement").GetComponent<Text>().enabled = false;
+
     }
 }

@@ -13,13 +13,14 @@ public class MLAgent : MonoBehaviourPunCallbacks {
     /// </summary>
     [PunRPC]
     public void hostSpawnAgents() {
-        GameObject agent = PhotonNetwork.Instantiate("Player", new Vector3(UnityEngine.Random.Range(20f, 25f), 1, UnityEngine.Random.Range(10f, 35f)), Quaternion.identity);     //Grabs player prefab and spawns them in spawn area
+
+        GameObject agent = PhotonNetwork.Instantiate("Player", gameObject.GetComponent<Server>().RandomSpawn(), Quaternion.identity);     //Grabs player prefab and spawns them in spawn area
 
         int agentViewID = agent.GetComponent<PhotonView>().ViewID;
 
         agent.transform.Find("camera").gameObject.SetActive(false);
 
-        string playerName = "Robo:" + Random.Range(0, 999);     //Assign username to player
+        string playerName = GameObject.Find("serverLight").GetComponent<Server>().NameGen();
 
         agent.GetComponent<Player>().isHuman = false;
         agent.GetComponent<Player>().playerName = playerName;

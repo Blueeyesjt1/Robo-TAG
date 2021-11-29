@@ -54,6 +54,11 @@ MonoBehaviour:
   - turnToHider
   - RestartMatch
   - Removetaggers
+  - reSpawn
+  - makeAnnouncement
+  - updatePlayers
+  - globalUpdatePlayerUI
+  - updatePlayerListUI
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

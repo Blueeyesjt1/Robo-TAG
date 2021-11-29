@@ -33,7 +33,7 @@ public class MLBrain : Agent
 
         hitCounter = 0;
 
-        gameObject.transform.position = new Vector3(UnityEngine.Random.Range(20f, 25f), 1, UnityEngine.Random.Range(10f, 35f));
+        gameObject.transform.position = GameObject.Find("serverLight").gameObject.GetComponent<Server>().RandomSpawn();
 
         gameObject.transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);
     }
@@ -192,6 +192,9 @@ public class MLBrain : Agent
         if (Input.GetAxisRaw("Mouse X") == 0)
             actionsOut[2] = 0;
 
-        actionsOut[3] = 1;
+        if(gameObject.GetComponent<Player>().movVert  == 0 && gameObject.GetComponent<Player>().movHorz == 0)
+            actionsOut[3] = 0;
+        else
+            actionsOut[3] = 1;
     }
 }

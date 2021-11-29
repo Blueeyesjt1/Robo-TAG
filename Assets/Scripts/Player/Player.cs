@@ -60,14 +60,14 @@ public class Player : MonoBehaviourPunCallbacks {
         if (!photonView.IsMine)     //If we're not the local client, ignore
             return;     //We only want the local client
 
-        if(isHuman)
-            RayCasts();     //Raycast detection for bots
+        //if(!isHuman)
+        RayCasts();     //Raycast detection for bots and humans
 
         if (!isFrozen)
             PlayerInputs();     //Player movement, whether it be a bot or real user
 
-        if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
-            GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
+        //if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
+        //GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
     }
 
     /// <summary>
@@ -100,6 +100,17 @@ public class Player : MonoBehaviourPunCallbacks {
                 yTurn = Input.GetAxisRaw("Mouse Y");
             else
                 yTurn = 0;
+
+            if (Input.GetKeyDown(KeyCode.Escape)) {     //Left right movement
+                if (gameObject.transform.Find("camera/CanvasQuit").gameObject.GetComponent<Canvas>().enabled == false) {
+                    gameObject.transform.Find("camera/CanvasQuit").gameObject.GetComponent<Canvas>().enabled = true;
+                    Cursor.lockState = CursorLockMode.None;
+                }
+                else {
+                    gameObject.transform.Find("camera/CanvasQuit").gameObject.GetComponent<Canvas>().enabled = false;
+                    Cursor.lockState = CursorLockMode.Locked;
+                }
+            }
 
         }
         else if(!isHuman) {     //If a ML agent, use ML choices
@@ -158,7 +169,7 @@ public class Player : MonoBehaviourPunCallbacks {
     /// </summary>
     void RayCasts() {
         RaycastHit forwHit;
-        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), transform.forward, out forwHit, 1.1f, 1 << 0)) {
+        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), transform.forward, out forwHit, 1.3f, 1 << 0)) {
             Debug.DrawLine(transform.position, transform.position + transform.forward, Color.green, .5f);
             hitWallForw = 0;
         }
@@ -166,7 +177,7 @@ public class Player : MonoBehaviourPunCallbacks {
             hitWallForw = 1;
 
         RaycastHit backHit;
-        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), -transform.forward, out backHit, 1.1f, 1 << 0)) {
+        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), -transform.forward, out backHit, 1.3f, 1 << 0)) {
             Debug.DrawLine(transform.position, transform.position - transform.forward, Color.red, .5f);
             hitWallBack = 0;
         }
@@ -174,7 +185,7 @@ public class Player : MonoBehaviourPunCallbacks {
             hitWallBack = 1;
 
         RaycastHit leftHit;
-        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), -transform.right, out leftHit, 1.1f, 1 << 0)) {
+        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), -transform.right, out leftHit, 1.3f, 1 << 0)) {
             Debug.DrawLine(transform.position, transform.position - transform.right, Color.yellow, .5f);
             hitWallLeft = 0;
         }
@@ -182,63 +193,65 @@ public class Player : MonoBehaviourPunCallbacks {
             hitWallLeft = 1;
 
         RaycastHit rightHit;
-        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), transform.right, out rightHit, 1.1f, 1 << 0)) {
+        if (Physics.Raycast(transform.position + new Vector3(0, .5f, 0), transform.right, out rightHit, 1.3f, 1 << 0)) {
             Debug.DrawLine(transform.position, transform.position + transform.right, Color.cyan, .5f);
             hitWallRight = 0;
         }
         else
             hitWallRight = 1;
 
-        int rayCount = 0;
-        for(int i = 0; i < 4; i++) {
-            for (int r = 0; r < 4; r++) {
+        if (!isHuman) {
+            int rayCount = 0;
+            for (int i = 0; i < 4; i++) {
+                for (int r = 0; r < 4; r++) {
 
-                int iSign = 1;     //Determines sign of variable I
-                int rSign = 1;     //Determines sign of variable J
+                    int iSign = 1;     //Determines sign of variable I
+                    int rSign = 1;     //Determines sign of variable J
 
-                if (i == 0) {
-                    iSign = 1;
-                    rSign = 1;
-                }
-                else if (i == 1) {
-                    iSign = 1;
-                    rSign = -1;
-                }
-                else if (i == 2) {
-                    iSign = -1;
-                    rSign = 1;
-                }
-                else if (i == 3) {
-                    iSign = -1;
-                    rSign = -1;
-                }
+                    if (i == 0) {
+                        iSign = 1;
+                        rSign = 1;
+                    }
+                    else if (i == 1) {
+                        iSign = 1;
+                        rSign = -1;
+                    }
+                    else if (i == 2) {
+                        iSign = -1;
+                        rSign = 1;
+                    }
+                    else if (i == 3) {
+                        iSign = -1;
+                        rSign = -1;
+                    }
 
-                if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), new Vector3(iSign * r, 0, rSign * (r - 4)), out MLDistHits[rayCount], Mathf.Infinity)) {
-                    Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), MLDistHits[rayCount].point, Color.blue, .01f);
-                }
+                    if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), new Vector3(iSign * r, 0, rSign * (r - 4)), out MLDistHits[rayCount], Mathf.Infinity)) {
+                        Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), MLDistHits[rayCount].point, Color.blue, .01f);
+                    }
 
-                rayCount++;
+                    rayCount++;
+                }
             }
-        }
 
-        if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(0, 0, 1), out eyeHits[0], Mathf.Infinity)) {
-            Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[0].point, Color.yellow, .01f);
-        }
+            if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(0, 0, 1), out eyeHits[0], Mathf.Infinity)) {
+                Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[0].point, Color.yellow, .01f);
+            }
 
-        if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(.1f,0,1), out eyeHits[1], Mathf.Infinity)) {
-            Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[1].point, Color.yellow, .01f);
-        }
+            if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(.1f, 0, 1), out eyeHits[1], Mathf.Infinity)) {
+                Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[1].point, Color.yellow, .01f);
+            }
 
-        if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(.1f, 0, 1), out eyeHits[2], Mathf.Infinity)) {
-            Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[2].point, Color.yellow, .01f);
-        }
+            if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(.1f, 0, 1), out eyeHits[2], Mathf.Infinity)) {
+                Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[2].point, Color.yellow, .01f);
+            }
 
-        if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(-.1f, 0, 1), out eyeHits[3], Mathf.Infinity)) {
-            Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[3].point, Color.yellow, .01f);
-        }
+            if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(-.1f, 0, 1), out eyeHits[3], Mathf.Infinity)) {
+                Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[3].point, Color.yellow, .01f);
+            }
 
-        if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(-.1f, 0, 1), out eyeHits[4], Mathf.Infinity)) {
-            Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[4].point, Color.yellow, .01f);
+            if (Physics.Raycast(transform.position + new Vector3(0, .75f, 0), gameObject.transform.TransformDirection(-.1f, 0, 1), out eyeHits[4], Mathf.Infinity)) {
+                Debug.DrawLine(transform.position + new Vector3(0, .75f, 0), eyeHits[4].point, Color.yellow, .01f);
+            }
         }
     }
 
