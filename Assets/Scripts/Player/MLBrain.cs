@@ -171,9 +171,9 @@ public class MLBrain : Agent
     public override void OnActionReceived(float[] vectorAction) {
         //base.OnActionReceived(vectorAction); 
 
-        forwBack = (int)vectorAction[0];
-        leftRight = (int)vectorAction[1];
-        rotY = (int)vectorAction[2];
+        forwBack = (int)vectorAction[0];     //Forward, backward
+        leftRight = (int)vectorAction[1];     //Left, right
+        rotY = (int)vectorAction[2];     //Rotation
         waitOverride = (int)vectorAction[3];     //Is the agent allowed to move?
     }
 

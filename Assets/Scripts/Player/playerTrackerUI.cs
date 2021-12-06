@@ -77,7 +77,10 @@ public class playerTrackerUI : MonoBehaviourPunCallbacks {
             gameObject.GetComponent<PhotonView>().RPC("updatePlayerListUI", PhotonNetwork.CurrentRoom.Players[actorId], pNamesArr);  */   //Calls to send info about a player to all clients.
     }
 
-
+    /// <summary>
+    /// Client requests host to gather list of player in server
+    /// <param name="actorId">Actor ID of who called for host to perform list grab</param>
+    /// </summary>
     [PunRPC]
     public void updatePlayerListUI(string[] playerNamesArr) {
 
