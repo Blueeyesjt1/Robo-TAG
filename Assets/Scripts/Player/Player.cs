@@ -1,7 +1,7 @@
 ﻿using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.MLAgents;
+//using Unity.MLAgents;
 using UnityEngine;
 
 public class Player : MonoBehaviourPunCallbacks {
@@ -32,7 +32,7 @@ public class Player : MonoBehaviourPunCallbacks {
     public RaycastHit[] MLDistHits = new RaycastHit[20];     //Used for ML agents to detect environment
     public RaycastHit[] eyeHits = new RaycastHit[5];     //Used for ML agents to find hiders and taggers
 
-    MLBrain mlBrain = null;     //Brain of player, if a bot
+    //MLBrain mlBrain = null;     //Brain of player, if a bot
 
     /// <summary>
     /// Player's interaction with the environment and server, non-synced framerate
@@ -47,10 +47,10 @@ public class Player : MonoBehaviourPunCallbacks {
     /// <summary>
     /// Player's start method at the beginning of every joined-server
     /// </summary>
-    private void Start() {
+    /*private void Start() {
         if (photonView.IsMine && gameObject.GetComponent<MLBrain>() != null)
             mlBrain = gameObject.GetComponent<MLBrain>();
-    }
+    }*/
 
     /// <summary>
     /// Player's interaction with the environment and server, synced framerate
@@ -66,8 +66,8 @@ public class Player : MonoBehaviourPunCallbacks {
         if (!isFrozen)
             PlayerInputs();     //Player movement, whether it be a bot or real user
 
-        //if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
-        //GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
+        if(isTagger && gameObject.GetComponent<MeshRenderer>().material.color != Color.red)
+            GameObject.Find("serverLight").GetComponent<PhotonView>().RPC("loadTagger", RpcTarget.All, photonView.ViewID);
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class Player : MonoBehaviourPunCallbacks {
     /// </summary>
     void PlayerInputs() {
 
-        if (isHuman || (mlBrain != null && mlBrain.userOverrideTraining == true)) {     //If a real user or heuristic agent, use mouse/keyboard inputs
+        if (isHuman /*|| (mlBrain != null && mlBrain.userOverrideTraining == true)*/) {     //If a real user or heuristic agent, use mouse/keyboard inputs
 
             if (Input.GetKey(KeyCode.W))     //Front back movement
                 movVert = 1;
@@ -113,7 +113,7 @@ public class Player : MonoBehaviourPunCallbacks {
             }
 
         }
-        else if(!isHuman) {     //If a ML agent, use ML choices
+        /*else if(!isHuman) {     //If a ML agent, use ML choices
 
             if (mlBrain.waitOverride == 1) {
                 if (mlBrain.forwBack == 2)     //Front back movement
@@ -141,7 +141,7 @@ public class Player : MonoBehaviourPunCallbacks {
                 xTurn = -.4f;
             else if (mlBrain.rotY == 0)
                 xTurn = 0;
-        }
+        }*/
 
         Movement();     //Inform other users about movement
     }

@@ -35,7 +35,7 @@ public class Lobby : MonoBehaviourPunCallbacks, IInRoomCallbacks, IMatchmakingCa
 
         PhotonNetwork.LocalPlayer.NickName = userName;     //Assign username to our photon client
 
-        RoomOptions roomOptions = new RoomOptions() { IsVisible = true, IsOpen = true, MaxPlayers = 25 };
+        RoomOptions roomOptions = new RoomOptions() { IsVisible = true, IsOpen = true, MaxPlayers = 10 };
 
         PhotonNetwork.JoinOrCreateRoom(serverName, roomOptions, null, null);
         PhotonNetwork.LoadLevel("tagArena");

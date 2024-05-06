@@ -1,10 +1,11 @@
+/*
 using System.Collections;
 using System.Collections.Generic;
-using Unity.MLAgents;
-using Unity.MLAgents.Sensors;
+//using Unity.MLAgents;
+//using Unity.MLAgents.Sensors;
 using UnityEngine;
 
-public class MLBrain : Agent
+public class MLBrain : MonoBehaviour
 {
     public int forwBack = 0;     //0 = not moving, 1 = backward, 2 = forward
     public int leftRight = 0;     //0 = not moving, 1 = left, 2 = right
@@ -28,15 +29,15 @@ public class MLBrain : Agent
     /// <summary>
     /// Resets the training environment for bots
     /// </summary>
-    public override void OnEpisodeBegin() {
-        base.OnEpisodeBegin();
+    /*public override void OnEpisodeBegin() {
+        //base.OnEpisodeBegin();
 
         hitCounter = 0;
 
-        gameObject.transform.position = GameObject.Find("serverLight").gameObject.GetComponent<Server>().RandomSpawn();
+        //gameObject.transform.position = GameObject.Find("serverLight").gameObject.GetComponent<Server>().RandomSpawn();
 
-        gameObject.transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);
-    }
+        //gameObject.transform.eulerAngles = new Vector3(0, UnityEngine.Random.Range(0f, 360f), 0);
+    }#1#
 
     /// <summary>
     /// Updating method for bot training decisions
@@ -59,31 +60,31 @@ public class MLBrain : Agent
                 //This enforces observation of the agents
                 if (seenObject.GetComponent<Player>().isTagger) {     //Spot a tagger, get rewarded
                     lastKnownTaggerPos = seenObject.transform.position;
-                    AddReward(.1f);
+                    //AddReward(.1f);
                 }
                 else if (!seenObject.GetComponent<Player>().isTagger) {     //Spot a hider, get rewarded less
                     lastKnownHiderPos = seenObject.transform.position;
-                    AddReward(.025f);
+                    //AddReward(.025f);
                 }
             }
 
-            if (lastKnownTaggerPos != new Vector3(0, 0, 0)) {     //If we have a last know position of tagger, get away from them and be rewarded
+            /*if (lastKnownTaggerPos != new Vector3(0, 0, 0)) {     //If we have a last know position of tagger, get away from them and be rewarded
                 AddReward(Mathf.Abs(gameObject.transform.position.x - lastKnownTaggerPos.x) * .1f);     //Reward distance from tagger
                 AddReward(Mathf.Abs(gameObject.transform.position.z - lastKnownTaggerPos.z) * .1f);     //Reward distance from tagger
-            }
+            }#1#
 
-            AddReward(.1f);     //Rewarded for being hider
+            //AddReward(.1f);     //Rewarded for being hider
         }
         else {     //If tagger,
             
             //This enforces observation of the agents
             if (seenObject.GetComponent<Player>().isTagger) {     //Spot a tagger, get rewarded less
                 lastKnownTaggerPos = seenObject.transform.position;
-                AddReward(.025f);
+                //AddReward(.025f);
             }
             else if (!seenObject.GetComponent<Player>().isTagger) {     //Spot a hider, get rewarded
                 lastKnownHiderPos = seenObject.transform.position;
-                AddReward(.1f);
+                //AddReward(.1f);
             }
 
             if (lastKnownHiderPos != new Vector3(0, 0, 0)) {     //If we have a last know position of a player, go towards and be rewarded (Hurt less)
@@ -198,3 +199,4 @@ public class MLBrain : Agent
             actionsOut[3] = 1;
     }
 }
+*/

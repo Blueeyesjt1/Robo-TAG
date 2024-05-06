@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using Unity.MLAgents;
+//using Unity.MLAgents;
 using Photon.Realtime;
-using Unity.MLAgents.Policies;
-using Unity.MLAgents.Demonstrations;
+//using Unity.MLAgents.Policies;
+//using Unity.MLAgents.Demonstrations;
 
 public class Server : MonoBehaviourPunCallbacks {
 
@@ -178,10 +178,10 @@ public class Server : MonoBehaviourPunCallbacks {
         joinedClient.GetComponent<Player>().playerActorNum = actorNum;      //Ensure this object is being controlled by correct client on our side
         joinedClient.name = "Player:" + pName;     //Assign game object name to be the client's username
         joinedClient.transform.Find("textUsername").GetComponent<TextMeshPro>().text = pName;
-        Destroy(joinedClient.GetComponent<DemonstrationRecorder>());     //Since not a bot, remove this component
+        /*Destroy(joinedClient.GetComponent<DemonstrationRecorder>());     //Since not a bot, remove this component
         Destroy(joinedClient.GetComponent<DecisionRequester>());     //Since not a bot, remove this component
         Destroy(joinedClient.GetComponent<MLBrain>());     //Since not a bot, remove this component
-        Destroy(joinedClient.GetComponent<BehaviorParameters>());     //Since not a bot, remove this component
+        Destroy(joinedClient.GetComponent<BehaviorParameters>());     //Since not a bot, remove this component*/
 
         //Everything past this is the host informing our newly joined client
         if (!PhotonNetwork.IsMasterClient)     //If host, inform our new client about the server's information

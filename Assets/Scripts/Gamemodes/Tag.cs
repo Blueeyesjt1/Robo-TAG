@@ -1,7 +1,6 @@
 using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.MLAgents.Policies;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +10,7 @@ public class Tag : MonoBehaviourPunCallbacks {
     public AudioClip slap;
     public AudioClip boop;
 
+    // ReSharper disable Unity.PerformanceAnalysis
     /// <summary>
     /// Restarts the round across the server
     /// </summary>
